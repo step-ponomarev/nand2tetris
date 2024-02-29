@@ -41,8 +41,8 @@ CHIP ALU {
         ng;      // if (out < 0)  equals 1, else 0
 
     PARTS:
-    Mux4Way16(a=x, b[0..15]=false, sel[0]=zx, out=xOrZeroX);
-    Mux4Way16(a=y, b[0..15]=false, sel[0]=zy, out=yOrZeroY);
+    Mux4Way16(a=x[0..15], b[0..15]=false, sel[0]=zx, out[0..15]=xOrZeroX);
+    Mux4Way16(a=y[0..15], b[0..15]=false, sel[0]=zy, out[0..15]=yOrZeroY);
 
     Not16(in=xOrZeroX, out=invertedX);
     Not16(in=yOrZeroY, out=invertedY);
@@ -56,5 +56,6 @@ CHIP ALU {
     Mux4Way16(a=xAndY, b=xPlusY, sel[0]=f, out=opertaionResult);
     Not16(in=opertaionResult, out=invertedResult);
 
-    Mux4Way16(a=opertaionResult, b=invertedResult, sel[0]=no, out=out);
+    Mux4Way16(a=opertaionResult, b=invertedResult, sel[0]=no, out=result, out=out, out[15]=ng);
+    IsZero16(in=result, out=zr);
 }
