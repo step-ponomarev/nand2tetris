@@ -14,9 +14,21 @@
  * and de-assert the other two bits. 
  */
 CHIP PC {
-    IN in[16],inc, load, reset;
+    IN in[16], inc, load, reset;
     OUT out[16];
     
     PARTS:
-    //// Replace this comment with your code.
+    Or(a=inc, b=load, out=incLoadOut);
+    Or(a=incLoadOut, b=reset, out=registerLoad);
+
+    Not(in=reset, out=notReset);
+    And(a=notReset, b=load, out=sel0);
+
+    Not(in=load, out=notLoad);
+    And(a=notReset, b=notLoad, out=notResetAndNotLoad);
+    And(a=notResetAndNotLoad, b=inc, out=sel1);
+
+    Inc16(in=registerOut, out=incrementedRegisterOut);
+    Mux4Way16(a[0..15]=false, b=in, c=incrementedRegisterOut, sel[0]=sel0, sel[1]=sel1, out=registerIn);
+    Register(in=registerIn, load=registerLoad, out=registerOut, out=out);
 }
