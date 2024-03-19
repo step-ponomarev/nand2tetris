@@ -32,96 +32,46 @@ CHIP CPU {
         pc[15];          // address of next instruction
 
     PARTS:
-	// if left bit == 0 -> A Command just save
-    // if left bit == 1 ->  C command -> Needs inerpretation
+    Not(in=instruction[15], out=ACommand);
+    Not(in=ACommand, out=CCommand);
+    
+    //---------- A REGISTER ----------
+    And(a=CCommand, b=instruction[5], out=loadACComand);
+    Or(a=ACommand, b=loadACComand, out=loadARegister);
+    Mux16(a=instruction, b=aluOut, sel=loadACComand, out=aRegisterInput);
+    ARegister(in=aRegisterInput, load=loadARegister, out=aRegisterOut);
+    //---------- A REGISTER ----------
+    
+    //---------- D REGISTER ----------
+    And(a=CCommand, b=instruction[4], out=loadD);
+    DRegister(in=aluOut, load=loadD, out=registerDOut);
+    //---------- D REGISTER ----------
 
+    And(a=CCommand, b=instruction[3], out=writeM);
 
-    // [6-11] -c bits
-    Not(in=instruction[11], out=notC11);
-    Not(in=instruction[10], out=notC10);
-    Not(in=instruction[9], out=notC9);
-    Not(in=instruction[8], out=notC8);
-    Not(in=instruction[7], out=notC7);
-    Not(in=instruction[6], out=notC6);
+    //---------- ALU ----------
+    //a - 12 bit
+    Mux16(a=aRegisterOut, b=inM, sel=instruction[12], out=y);
+    ALU(x=registerDOut, y=y, zx=instruction[11], nx=instruction[10], zy=instruction[9], ny=instruction[8], f=instruction[7], no=instruction[6], out=aluOut, zr=zr, ng=ng);
+    //---------- ALU ----------
 
-    // ALU x value -------------------
-    And(a=notC11, b=notC10, out=notC11AndNotC10);
-    And(a=notC11AndNotC10, b=notC9, out=notLast3C);
-    And(a=notC11AndNotC10, b=instruction[8], out=cc);
-    And(a=notC11AndNotC10, b=instruction[7], out=ccc);
-    And(a=notC11AndNotC10, b=instruction[6], out=isAValueSpecial);
+    //---------- Memory out ----------
+    Or16(a=false, b=aRegisterOut, out[0..14]=addressM);
+    Or16(a=false, b=aluOut, out=outM);
+    //---------- Memory out ----------
 
-    Or(a=instruction[11], b=isAValueSpecial, out=isAValue);
+    //---------- PC ----------
+    And(a=ng, b=instruction[2], out=lsZeroJumb);
 
-    Mux16(a=registerD, b=registerA, sel=isAValue, out=a0X);
-    Mux16(a=registerD, b=memoryOut, sel=isAValue, out=a1X);
+    Not(in=ng, out=positiveValue);
+    And(a=positiveValue, b=instruction[0], out=gtJmp);
 
-    Mux16(a=a0X, b=a1X, sel=instruction[12], out=x);
-    // ---------------------------------------------------------
+    And(a=zr, b=instruction[1], out=zrJmp);
 
-    // ALU y value --------------------------------------
-    Not(in=isAValue, out=dValue);
-    Mux16(a=registerA, b=registerD, sel=dValue, out=a0Y);
-    Mux16(a=registerA, b=registerD, sel=dValue, out=a1Y);
-    Mux16(a=a0Y, b=a1Y, sel=instruction[12], out=y);
-    // ---------------------------------------------------------
+    Or(a=lsZeroJumb, b=gtJmp, out=loadPc1);
+    Or(a=loadPc1, b=zrJmp, out=loadPc2);
+    And(a=CCommand, b=loadPc2, out=loadPc);
 
-
-    ALU(x=x, y=y, zx=instruction[11], nx=instruction[10], zy=instruction[9], ny=instruction[8], f=instruction[7], no=instruction[6], out=aluOut, zr=zr, ng=ng);
-    Mux16(a=instruction, b=aluOut, sel=instruction[15], out=aValue);
-
-
-    // [3,5] - d bits
-    //A register
-    Not(in=instruction[15], out=notC);
-    Or(a=notC, b=instruction[5], out=loadA);  
-    Register(
-        in=aValue, 
-        load=loadA,
-        out=registerA,
-        out[0]=a0,
-        out[1]=a1,
-        out[2]=a2, 
-        out[3]=a3, 
-        out[4]=a4, 
-        out[5]=a5, 
-        out[6]=a6, 
-        out[7]=a7, 
-        out[8]=a8, 
-        out[9]=a9, 
-        out[10]=a10, 
-        out[11]=a11, 
-        out[12]=a12, 
-        out[13]=a13
-    );
-
-    Register(in=aluOut, load=instruction[4], out=registerD);
-
-
-    // PC(in=, load=, inc=, reset=reset, out=pcOut);
-
-    //Memory
-    //load if lowest d === 1, пусть будет 
-    RAM16K(
-        in=aluOut, 
-        load=instruction[3], 
-        address[0]=a0,
-        address[1]=a1,
-        address[2]=a2,
-        address[3]=a3,
-        address[4]=a4,
-        address[5]=a5,
-        address[6]=a6,
-        address[7]=a7,
-        address[8]=a8,
-        address[9]=a9,
-        address[10]=a10,
-        address[11]=a11, 
-        address[12]=a12, 
-        address[13]=a13,
-        out=memoryOut,
-        out=outM
-    );
-
-    PC(in=false, load=false, inc=true, reset=reset, out=pcOut);
+    PC(in=aRegisterOut, load=loadPc, inc=true, reset=reset, out[0..14]=pc);
+    //---------- PC ----------
 }
