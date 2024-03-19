@@ -64,7 +64,9 @@ CHIP CPU {
     And(a=ng, b=instruction[2], out=lsZeroJumb);
 
     Not(in=ng, out=positiveValue);
-    And(a=positiveValue, b=instruction[0], out=gtJmp);
+    Not(in=zr, out=notZero);
+    And(a=notZero, b=positiveValue, out=notNgAndNotZero);
+    And(a=notNgAndNotZero, b=instruction[0], out=gtJmp);
 
     And(a=zr, b=instruction[1], out=zrJmp);
 
